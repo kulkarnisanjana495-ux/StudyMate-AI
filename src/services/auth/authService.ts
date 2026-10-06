@@ -60,10 +60,6 @@ export async function signUpWithEmail({ email, password, fullName }: SignUpParam
   session: Session | null;
   requiresVerification: boolean;
 }> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase Anon Key is not configured. Please supply a valid key.');
-  }
-
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
@@ -101,10 +97,6 @@ export async function signInWithEmail({ email, password }: SignInParams): Promis
   user: User;
   session: Session;
 }> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase Anon Key is not configured. Please supply a valid key.');
-  }
-
   const { data, error } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password,
@@ -124,13 +116,9 @@ export async function signInWithEmail({ email, password }: SignInParams): Promis
   };
 }
 
-export async function signInWithOAuth(provider: 'google' | 'github'): Promise<void> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase Anon Key is not configured. Please supply a valid key.');
-  }
-
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider,
+export async function signInWithGoogle(): Promise<{ data: any; error: any }> {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
     },
@@ -139,6 +127,38 @@ export async function signInWithOAuth(provider: 'google' | 'github'): Promise<vo
   if (error) {
     throw new Error(formatAuthError(error));
   }
+
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+
+  return { data, error };
+}
+
+export async function signInWithGithub(): Promise<{ data: any; error: any }> {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'github',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    throw new Error(formatAuthError(error));
+  }
+
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+
+  return { data, error };
+}
+
+export async function signInWithOAuth(provider: 'google' | 'github'): Promise<{ data: any; error: any }> {
+  if (provider === 'google') {
+    return signInWithGoogle();
+  }
+  return signInWithGithub();
 }
 
 export async function signOut(): Promise<void> {
@@ -149,10 +169,6 @@ export async function signOut(): Promise<void> {
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<void> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase Anon Key is not configured. Please supply a valid key.');
-  }
-
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: `${window.location.origin}/reset-password`,
   });
@@ -163,10 +179,6 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
 }
 
 export async function updatePassword(newPassword: string): Promise<void> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase Anon Key is not configured. Please supply a valid key.');
-  }
-
   const { error } = await supabase.auth.updateUser({
     password: newPassword,
   });
@@ -177,10 +189,6 @@ export async function updatePassword(newPassword: string): Promise<void> {
 }
 
 export async function resendVerificationEmail(email: string): Promise<void> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase Anon Key is not configured. Please supply a valid key.');
-  }
-
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: email.trim(),

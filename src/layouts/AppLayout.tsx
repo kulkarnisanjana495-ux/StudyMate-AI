@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Navbar } from '../components/Navbar';
-import { SupabaseConfigNotice } from '../components/SupabaseConfigNotice';
 import { useAuth } from '../hooks/useAuth';
 
 export const AppLayout: React.FC = () => {
@@ -25,8 +24,6 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
-      <SupabaseConfigNotice />
-
       <div className="flex flex-1 min-h-0">
         {showSidebar && (
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

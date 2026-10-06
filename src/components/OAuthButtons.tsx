@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithOAuth } from '../services/auth/authService';
+import { signInWithGoogle, signInWithGithub } from '../services/auth/authService';
 import { Alert } from './ui/Alert';
 
 interface OAuthButtonsProps {
@@ -10,13 +10,26 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'github' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleOAuth = async (provider: 'google' | 'github') => {
+  const handleGoogle = async () => {
     try {
       setLocalError(null);
-      setLoadingProvider(provider);
-      await signInWithOAuth(provider);
+      setLoadingProvider('google');
+      await signInWithGoogle();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'OAuth authentication failed';
+      const msg = err instanceof Error ? err.message : 'Google authentication could not be completed.';
+      setLocalError(msg);
+      onError?.(msg);
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleGithub = async () => {
+    try {
+      setLocalError(null);
+      setLoadingProvider('github');
+      await signInWithGithub();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'GitHub authentication could not be completed.';
       setLocalError(msg);
       onError?.(msg);
       setLoadingProvider(null);
@@ -34,8 +47,9 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
       {/* Google Button */}
       <button
         type="button"
-        onClick={() => handleOAuth('google')}
+        onClick={handleGoogle}
         disabled={loadingProvider !== null}
+        aria-label="Continue with Google"
         className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-semibold transition-all shadow-xs hover:border-slate-400 dark:hover:border-slate-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
         {loadingProvider === 'google' ? (
@@ -45,7 +59,7 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
           </>
         ) : (
           <>
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -71,8 +85,9 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
       {/* GitHub Button */}
       <button
         type="button"
-        onClick={() => handleOAuth('github')}
+        onClick={handleGithub}
         disabled={loadingProvider !== null}
+        aria-label="Continue with GitHub"
         className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-semibold transition-all shadow-xs hover:border-slate-400 dark:hover:border-slate-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
         {loadingProvider === 'github' ? (
@@ -82,7 +97,7 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
           </>
         ) : (
           <>
-            <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"

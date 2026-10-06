@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  GraduationCap,
   ArrowRight,
   ArrowLeft,
   RefreshCw,
@@ -41,7 +40,7 @@ export const AuthCallbackPage: React.FC = () => {
 
     async function processCallback() {
       try {
-        // 1. Safely extract error from query params or URL hash
+        // 1. Safely extract potential error from query params or URL hash
         const searchError = searchParams.get('error') || searchParams.get('error_description');
         const searchErrorCode = searchParams.get('error_code');
 
@@ -68,12 +67,12 @@ export const AuthCallbackPage: React.FC = () => {
 
         if (rawError) {
           const lower = (rawError + ' ' + (rawCode || '')).toLowerCase();
-          let friendly = 'Email verification could not be completed. Please request a new verification email.';
+          let friendly = 'Authentication could not be completed. Please try again.';
 
           if (lower.includes('otp_expired') || lower.includes('expired') || lower.includes('invalid or has expired')) {
             friendly = 'This verification link has expired or has already been used. If you have already verified your account, you can log in directly.';
           } else if (lower.includes('access_denied')) {
-            friendly = 'Access was denied during verification. Please request a new link.';
+            friendly = 'Authentication access was denied. Please try again.';
           } else {
             friendly = formatAuthError(rawError);
           }
@@ -99,9 +98,10 @@ export const AuthCallbackPage: React.FC = () => {
             return;
           }
 
-          if (exchangeData?.session?.user) {
-            if (exchangeData.session.user.email) {
-              setResendEmail(exchangeData.session.user.email);
+          const user = exchangeData?.session?.user || exchangeData?.user;
+          if (user) {
+            if (user.email) {
+              setResendEmail(user.email);
             }
             if (!isCancelled) {
               setStatus('success');
@@ -111,7 +111,7 @@ export const AuthCallbackPage: React.FC = () => {
               if (!isCancelled) {
                 navigate('/dashboard', { replace: true });
               }
-            }, 1200);
+            }, 800);
             return;
           }
         }
@@ -133,7 +133,8 @@ export const AuthCallbackPage: React.FC = () => {
             return;
           }
 
-          if (otpData?.session?.user || otpData?.user) {
+          const user = otpData?.session?.user || otpData?.user;
+          if (user) {
             if (!isCancelled) {
               setStatus('success');
             }
@@ -142,7 +143,7 @@ export const AuthCallbackPage: React.FC = () => {
               if (!isCancelled) {
                 navigate('/dashboard', { replace: true });
               }
-            }, 1200);
+            }, 800);
             return;
           }
         }
@@ -158,9 +159,10 @@ export const AuthCallbackPage: React.FC = () => {
           return;
         }
 
-        if (sessionData?.session?.user) {
-          if (sessionData.session.user.email) {
-            setResendEmail(sessionData.session.user.email);
+        const activeUser = sessionData?.session?.user;
+        if (activeUser) {
+          if (activeUser.email) {
+            setResendEmail(activeUser.email);
           }
           if (!isCancelled) {
             setStatus('success');
@@ -170,11 +172,11 @@ export const AuthCallbackPage: React.FC = () => {
             if (!isCancelled) {
               navigate('/dashboard', { replace: true });
             }
-          }, 1200);
+          }, 800);
           return;
         }
 
-        // 5. Wait for onAuthStateChange in case hash parsing is in flight
+        // 5. Listen to onAuthStateChange for hash-based OAuth/recovery token resolution
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -188,20 +190,20 @@ export const AuthCallbackPage: React.FC = () => {
               if (!isCancelled) {
                 navigate('/dashboard', { replace: true });
               }
-            }, 1200);
+            }, 800);
           }
         });
 
-        // 6. Timeout after 4 seconds if no session is detected
+        // 6. Timeout after 4.5 seconds if no session is detected
         const timeoutId = setTimeout(() => {
           subscription.unsubscribe();
           if (!isCancelled && status === 'loading') {
             setStatus('error');
             setErrorMessage(
-              'No active authentication session could be verified from this link. Please log in or request a new verification email.'
+              'No active authentication session could be verified. Please return to the login page and try again.'
             );
           }
-        }, 4000);
+        }, 4500);
 
         return () => {
           clearTimeout(timeoutId);
@@ -262,10 +264,10 @@ export const AuthCallbackPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Verifying Email...
+                Authenticating...
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Authenticating your university credentials with StudyMate AI.
+                Completing secure authentication with StudyMate AI.
               </p>
             </div>
             <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
@@ -282,10 +284,10 @@ export const AuthCallbackPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Email Verified Successfully!
+                Authentication Successful!
               </h2>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                Welcome to StudyMate AI. Preparing your academic dashboard...
+                Welcome to StudyMate AI. Redirecting to your dashboard...
               </p>
             </div>
             <div className="pt-2">
@@ -311,15 +313,15 @@ export const AuthCallbackPage: React.FC = () => {
 
             <div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Verification Unsuccessful
+                Authentication Unsuccessful
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                We couldn't confirm your verification link.
+                We could not complete your sign in.
               </p>
             </div>
 
             <Alert variant="error">
-              {errorMessage || 'Email verification could not be completed. Please request a new verification email.'}
+              {errorMessage || 'Authentication could not be completed. Please try again.'}
             </Alert>
 
             {resendFeedback && (
@@ -328,11 +330,11 @@ export const AuthCallbackPage: React.FC = () => {
               </Alert>
             )}
 
-            {/* Resend form */}
+            {/* Optional Resend form */}
             <form onSubmit={handleResend} className="space-y-3 pt-1 text-left">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Resend to email address
+                  Registered university email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">

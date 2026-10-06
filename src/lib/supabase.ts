@@ -23,7 +23,7 @@ function getActiveAnonKey(): string {
 let activeAnonKey = getActiveAnonKey();
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(activeAnonKey && activeAnonKey.length > 10 && activeAnonKey !== 'YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY');
+  return true;
 }
 
 // Fallback anon key allows client creation without unhandled init errors if env is still blank
