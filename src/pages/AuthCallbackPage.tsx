@@ -1,24 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight,
   ArrowLeft,
   RefreshCw,
   Mail,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { fetchProfile } from '../services/profile/profileService';
 import { resendVerificationEmail, formatAuthError } from '../services/auth/authService';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 
 export const AuthCallbackPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -26,6 +23,9 @@ export const AuthCallbackPage: React.FC = () => {
   const [resending, setResending] = useState(false);
   const [resendFeedback, setResendFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [countdown, setCountdown] = useState(0);
+
+  const hasHandledSuccessRef = useRef(false);
+  const hasInitiatedRef = useRef(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -36,43 +36,62 @@ export const AuthCallbackPage: React.FC = () => {
   }, [countdown]);
 
   useEffect(() => {
+    if (hasInitiatedRef.current) return;
+    hasInitiatedRef.current = true;
+
     let isCancelled = false;
 
-    async function processCallback() {
+    // Helper to complete login and navigate to dashboard
+    const completeSuccessfulAuth = async (userId: string) => {
+      if (hasHandledSuccessRef.current || isCancelled) return;
+      hasHandledSuccessRef.current = true;
+
+      // Clean OAuth code and parameters from URL
       try {
-        // 1. Safely extract potential error from query params or URL hash
-        const searchError = searchParams.get('error') || searchParams.get('error_description');
-        const searchErrorCode = searchParams.get('error_code');
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } catch {
+        // ignore history error
+      }
 
+      setStatus('success');
+
+      try {
+        await fetchProfile(userId);
+      } catch (err) {
+        console.warn('Profile fetch after OAuth:', err);
+      }
+
+      if (!isCancelled) {
+        navigate('/dashboard', { replace: true });
+      }
+    };
+
+    async function handleAuthCallback() {
+      try {
+        const url = new URL(window.location.href);
+
+        // 1. Check for URL error parameters from OAuth provider
+        const urlError = url.searchParams.get('error') || url.searchParams.get('error_description');
         let hashError: string | null = null;
-        let hashErrorCode: string | null = null;
-        let hashDescription: string | null = null;
-
         if (window.location.hash) {
           try {
-            const rawHash = window.location.hash.startsWith('#')
-              ? window.location.hash.substring(1)
-              : window.location.hash;
-            const hashParams = new URLSearchParams(rawHash);
-            hashError = hashParams.get('error');
-            hashErrorCode = hashParams.get('error_code');
-            hashDescription = hashParams.get('error_description');
+            const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+            hashError = hashParams.get('error') || hashParams.get('error_description');
           } catch {
-            // Ignore hash parse errors
+            // ignore hash parse errors
           }
         }
 
-        const rawError = searchError || hashDescription || hashError;
-        const rawCode = searchErrorCode || hashErrorCode;
-
+        const rawError = urlError || hashError;
         if (rawError) {
-          const lower = (rawError + ' ' + (rawCode || '')).toLowerCase();
-          let friendly = 'Authentication could not be completed. Please try again.';
-
-          if (lower.includes('otp_expired') || lower.includes('expired') || lower.includes('invalid or has expired')) {
-            friendly = 'This verification link has expired or has already been used. If you have already verified your account, you can log in directly.';
-          } else if (lower.includes('access_denied')) {
-            friendly = 'Authentication access was denied. Please try again.';
+          console.error('OAuth / verification error in URL:', rawError);
+          const lower = rawError.toLowerCase();
+          let friendly = 'GitHub sign-in could not be completed. Please try again.';
+          if (lower.includes('access_denied')) {
+            friendly = 'Authorization was denied. Please try again.';
+          } else if (lower.includes('otp_expired') || lower.includes('expired')) {
+            friendly = 'This verification link has expired or has already been used. Please request a new verification email.';
           } else {
             friendly = formatAuthError(rawError);
           }
@@ -84,41 +103,9 @@ export const AuthCallbackPage: React.FC = () => {
           return;
         }
 
-        // 2. PKCE code exchange: check if `code` is in query parameters
-        const code = searchParams.get('code');
-        if (code) {
-          const { data: exchangeData, error: exchangeError } =
-            await supabase.auth.exchangeCodeForSession(code);
-
-          if (exchangeError) {
-            if (!isCancelled) {
-              setStatus('error');
-              setErrorMessage(formatAuthError(exchangeError));
-            }
-            return;
-          }
-
-          const user = exchangeData?.session?.user || exchangeData?.user;
-          if (user) {
-            if (user.email) {
-              setResendEmail(user.email);
-            }
-            if (!isCancelled) {
-              setStatus('success');
-            }
-            await refreshProfile();
-            setTimeout(() => {
-              if (!isCancelled) {
-                navigate('/dashboard', { replace: true });
-              }
-            }, 800);
-            return;
-          }
-        }
-
-        // 3. Email OTP verification fallback (if token_hash and type are passed)
-        const tokenHash = searchParams.get('token_hash');
-        const otpType = searchParams.get('type') as any;
+        // 2. Email verification using token_hash and type (signup or email verification link)
+        const tokenHash = url.searchParams.get('token_hash');
+        const otpType = url.searchParams.get('type') as any;
         if (tokenHash && otpType) {
           const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
@@ -126,103 +113,108 @@ export const AuthCallbackPage: React.FC = () => {
           });
 
           if (otpError) {
+            console.error('Email verification OTP error:', otpError);
             if (!isCancelled) {
               setStatus('error');
-              setErrorMessage(formatAuthError(otpError));
+              setErrorMessage('Email verification could not be completed. Please request a new verification email.');
             }
             return;
           }
 
-          const user = otpData?.session?.user || otpData?.user;
-          if (user) {
-            if (!isCancelled) {
-              setStatus('success');
-            }
-            await refreshProfile();
-            setTimeout(() => {
-              if (!isCancelled) {
-                navigate('/dashboard', { replace: true });
-              }
-            }, 800);
+          const verifiedUser = otpData?.session?.user || otpData?.user;
+          if (verifiedUser) {
+            await completeSuccessfulAuth(verifiedUser.id);
             return;
           }
         }
 
-        // 4. Client-side session detection: check if session already established
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          if (!isCancelled) {
-            setStatus('error');
-            setErrorMessage(formatAuthError(sessionError));
-          }
-          return;
-        }
-
-        const activeUser = sessionData?.session?.user;
-        if (activeUser) {
-          if (activeUser.email) {
-            setResendEmail(activeUser.email);
-          }
-          if (!isCancelled) {
-            setStatus('success');
-          }
-          await refreshProfile();
-          setTimeout(() => {
-            if (!isCancelled) {
-              navigate('/dashboard', { replace: true });
-            }
-          }, 800);
-          return;
-        }
-
-        // 5. Listen to onAuthStateChange for hash-based OAuth/recovery token resolution
+        // 3. Setup auth state listener for OAuth events (PKCE automatic exchange or hash tokens)
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-          if (newSession?.user) {
+          if (newSession?.user && !hasHandledSuccessRef.current) {
             subscription.unsubscribe();
-            if (!isCancelled) {
-              setStatus('success');
-            }
-            await refreshProfile();
-            setTimeout(() => {
-              if (!isCancelled) {
-                navigate('/dashboard', { replace: true });
-              }
-            }, 800);
+            await completeSuccessfulAuth(newSession.user.id);
           }
         });
 
-        // 6. Timeout after 4.5 seconds if no session is detected
-        const timeoutId = setTimeout(() => {
+        // 4. Check if session was already established or automatically exchanged by detectSessionInUrl: true
+        // supabase.auth.getSession() awaits internal initialization (which runs PKCE exchange when code is in URL)
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
           subscription.unsubscribe();
-          if (!isCancelled && status === 'loading') {
-            setStatus('error');
-            setErrorMessage(
-              'No active authentication session could be verified. Please return to the login page and try again.'
-            );
-          }
-        }, 4500);
+          await completeSuccessfulAuth(sessionData.session.user.id);
+          return;
+        }
 
-        return () => {
-          clearTimeout(timeoutId);
-          subscription.unsubscribe();
-        };
-      } catch (err: unknown) {
-        if (!isCancelled) {
+        // 5. If code is present in URL and session was not immediately returned by getSession(),
+        // attempt manual PKCE exchange as a fallback
+        const code = url.searchParams.get('code');
+        if (code && !hasHandledSuccessRef.current) {
+          try {
+            const { data: exchangeData, error: exchangeError } =
+              await supabase.auth.exchangeCodeForSession(code);
+
+            if (exchangeData?.session?.user) {
+              subscription.unsubscribe();
+              await completeSuccessfulAuth(exchangeData.session.user.id);
+              return;
+            }
+
+            if (exchangeError) {
+              // Note: If the error is "PKCE code verifier not found in storage.",
+              // it typically means the automatic detectSessionInUrl handler already consumed it.
+              // Re-check getSession() after a short delay before declaring an error.
+              console.warn('PKCE exchange error (may be handled by client auto-detection):', exchangeError.message);
+            }
+          } catch (err) {
+            console.warn('PKCE exchange exception:', err);
+          }
+        }
+
+        // 6. Grace period: Poll getSession() for up to 3.5 seconds
+        // This gives the asynchronous auto-exchange ample time to finish writing the session
+        const startTime = Date.now();
+        const maxWaitMs = 3500;
+
+        while (Date.now() - startTime < maxWaitMs && !hasHandledSuccessRef.current && !isCancelled) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const { data: pollData } = await supabase.auth.getSession();
+          if (pollData?.session?.user) {
+            subscription.unsubscribe();
+            await completeSuccessfulAuth(pollData.session.user.id);
+            return;
+          }
+        }
+
+        subscription.unsubscribe();
+
+        // 7. If still no session after grace period, show error screen
+        if (!hasHandledSuccessRef.current && !isCancelled) {
+          // If the user navigated directly to /auth/callback without any code or tokens, redirect to login
+          if (!url.searchParams.has('code') && !url.searchParams.has('token_hash') && !window.location.hash) {
+            navigate('/login', { replace: true });
+            return;
+          }
+
           setStatus('error');
-          setErrorMessage(formatAuthError(err));
+          setErrorMessage('GitHub sign-in could not be completed. Please try again.');
+        }
+      } catch (err: unknown) {
+        console.error('OAuth callback execution error:', err);
+        if (!hasHandledSuccessRef.current && !isCancelled) {
+          setStatus('error');
+          setErrorMessage('GitHub sign-in could not be completed. Please try again.');
         }
       }
     }
 
-    processCallback();
+    handleAuthCallback();
 
     return () => {
       isCancelled = true;
     };
-  }, [searchParams, navigate, refreshProfile]);
+  }, [navigate]);
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,7 +248,7 @@ export const AuthCallbackPage: React.FC = () => {
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm text-center">
-        {/* State 1: Loading */}
+        {/* Loading State */}
         {status === 'loading' && (
           <div className="space-y-4 py-4">
             <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 mx-auto flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -276,7 +268,7 @@ export const AuthCallbackPage: React.FC = () => {
           </div>
         )}
 
-        {/* State 2: Success */}
+        {/* Success State */}
         {status === 'success' && (
           <div className="space-y-4 py-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 mx-auto flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -287,24 +279,13 @@ export const AuthCallbackPage: React.FC = () => {
                 Authentication Successful!
               </h2>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                Welcome to StudyMate AI. Redirecting to your dashboard...
+                Redirecting to your dashboard...
               </p>
-            </div>
-            <div className="pt-2">
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full"
-                onClick={() => navigate('/dashboard', { replace: true })}
-                rightIcon={<ArrowRight className="w-4 h-4" />}
-              >
-                Go to Dashboard
-              </Button>
             </div>
           </div>
         )}
 
-        {/* State 3: Error */}
+        {/* Error State */}
         {status === 'error' && (
           <div className="space-y-5">
             <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 mx-auto flex items-center justify-center text-rose-600 dark:text-rose-400">
@@ -313,7 +294,7 @@ export const AuthCallbackPage: React.FC = () => {
 
             <div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Authentication Unsuccessful
+                Sign-In Unsuccessful
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 We could not complete your sign in.
@@ -321,7 +302,7 @@ export const AuthCallbackPage: React.FC = () => {
             </div>
 
             <Alert variant="error">
-              {errorMessage || 'Authentication could not be completed. Please try again.'}
+              {errorMessage || 'GitHub sign-in could not be completed. Please try again.'}
             </Alert>
 
             {resendFeedback && (
@@ -330,11 +311,11 @@ export const AuthCallbackPage: React.FC = () => {
               </Alert>
             )}
 
-            {/* Optional Resend form */}
+            {/* Resend form */}
             <form onSubmit={handleResend} className="space-y-3 pt-1 text-left">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Registered university email
+                  Resend verification to university email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">

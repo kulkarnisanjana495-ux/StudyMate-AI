@@ -24,9 +24,12 @@ export const LoginPage: React.FC = () => {
 
   // If already authenticated, redirect
   React.useEffect(() => {
-    if (user?.email_confirmed_at) {
-      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+    if (user) {
+      const isEmailUnconfirmed = user.app_metadata?.provider === 'email' && !user.email_confirmed_at;
+      if (!isEmailUnconfirmed) {
+        const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
+      }
     }
   }, [user, navigate, location]);
 

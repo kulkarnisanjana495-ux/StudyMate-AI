@@ -16,7 +16,7 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
       setLoadingProvider('google');
       await signInWithGoogle();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Google authentication could not be completed.';
+      const msg = err instanceof Error ? err.message : 'Google sign-in could not be completed. Please try again.';
       setLocalError(msg);
       onError?.(msg);
       setLoadingProvider(null);
@@ -24,12 +24,13 @@ export const OAuthButtons: React.FC<OAuthButtonsProps> = ({ onError }) => {
   };
 
   const handleGithub = async () => {
+    if (loadingProvider !== null) return;
     try {
       setLocalError(null);
       setLoadingProvider('github');
       await signInWithGithub();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'GitHub authentication could not be completed.';
+      const msg = err instanceof Error ? err.message : 'GitHub sign-in could not be completed. Please try again.';
       setLocalError(msg);
       onError?.(msg);
       setLoadingProvider(null);

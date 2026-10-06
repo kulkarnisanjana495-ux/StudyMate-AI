@@ -125,11 +125,8 @@ export async function signInWithGoogle(): Promise<{ data: any; error: any }> {
   });
 
   if (error) {
+    console.error('Google OAuth error:', error);
     throw new Error(formatAuthError(error));
-  }
-
-  if (data?.url) {
-    window.location.href = data.url;
   }
 
   return { data, error };
@@ -144,11 +141,8 @@ export async function signInWithGithub(): Promise<{ data: any; error: any }> {
   });
 
   if (error) {
+    console.error('GitHub OAuth error:', error);
     throw new Error(formatAuthError(error));
-  }
-
-  if (data?.url) {
-    window.location.href = data.url;
   }
 
   return { data, error };

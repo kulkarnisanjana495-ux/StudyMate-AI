@@ -22,8 +22,11 @@ export const SignupPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (user && user.email_confirmed_at) {
-      navigate('/dashboard', { replace: true });
+    if (user) {
+      const isEmailUnconfirmed = user.app_metadata?.provider === 'email' && !user.email_confirmed_at;
+      if (!isEmailUnconfirmed) {
+        navigate('/dashboard', { replace: true });
+      }
     }
   }, [user, navigate]);
 

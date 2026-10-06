@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Database, CheckCircle2, AlertTriangle, KeyRound } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, KeyRound } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Alert } from './ui/Alert';
-import { SUPABASE_URL, isSupabaseConfigured, setCustomAnonKey, clearCustomAnonKey } from '../lib/supabase';
+import { SUPABASE_URL, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 export const SupabaseConfigNotice: React.FC = () => {
@@ -20,21 +20,13 @@ export const SupabaseConfigNotice: React.FC = () => {
       return;
     }
 
-    const success = setCustomAnonKey(anonKeyInput.trim());
-    if (success) {
-      setFeedback({
-        type: 'success',
-        message: 'Supabase anon key activated for this session! Real Supabase auth is now live.',
-      });
-      setTimeout(() => {
-        setIsOpen(false);
-        setFeedback(null);
-      }, 1400);
-    }
+    setFeedback({
+      type: 'success',
+      message: 'To permanently set your key, define VITE_SUPABASE_ANON_KEY in your .env file.',
+    });
   };
 
   const handleReset = () => {
-    clearCustomAnonKey();
     setAnonKeyInput('');
     setFeedback({ type: 'info' as any, message: 'Reset to environment default.' });
   };
