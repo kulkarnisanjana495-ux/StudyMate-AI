@@ -1,5 +1,91 @@
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import type { Profile, ProfileUpdateInput } from '../../types/profile';
+import { isProfileComplete } from '../../types/profile';
+
+export { isProfileComplete };
+
+/**
+ * Resolves an avatar reference into a displayable URL.
+ * If the reference is a storage path (e.g. "USER_ID/profile.jpg"), generates a signed URL from the private 'avatars' bucket.
+ * If the reference is an external URL (e.g. from Google or GitHub), returns it.
+ * If signed URL creation fails or no photo exists, falls back to the provided fallback URL or null.
+ */
+export async function getSignedAvatarUrl(
+  avatarRef: string | null | undefined,
+  fallbackUrl?: string | null,
+  expirationSeconds: number = 86400
+): Promise<string | null> {
+  if (!isSupabaseConfigured()) {
+    return fallbackUrl || null;
+  }
+
+  if (!avatarRef || !avatarRef.trim()) {
+    return fallbackUrl || null;
+  }
+
+  const cleanRef = avatarRef.trim();
+
+  // If already an absolute http/https URL
+  if (cleanRef.startsWith('http://') || cleanRef.startsWith('https://')) {
+    // If it points to our Supabase avatars storage bucket, extract the underlying path and generate a fresh signed URL
+    const avatarsMatch = cleanRef.match(/\/storage\/v1\/object\/(?:public|sign)\/avatars\/([^?]+)/);
+    if (avatarsMatch && avatarsMatch[1]) {
+      const storagePath = decodeURIComponent(avatarsMatch[1]);
+      try {
+        const { data, error } = await supabase.storage
+          .from('avatars')
+          .createSignedUrl(storagePath, expirationSeconds);
+        if (data?.signedUrl) {
+          return `${data.signedUrl}&t=${Date.now()}`;
+        }
+      } catch (err) {
+        console.warn('Error creating signed URL for extracted avatar path:', err);
+      }
+    }
+    return cleanRef;
+  }
+
+  // It is a storage path, e.g. "USER_ID/profile.jpg" or "avatars/USER_ID/profile.jpg"
+  const storagePath = cleanRef.replace(/^avatars\//, '');
+  try {
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(storagePath, expirationSeconds);
+
+    if (error || !data?.signedUrl) {
+      console.warn('Failed to create signed URL for avatar:', error?.message);
+      return fallbackUrl || null;
+    }
+
+    return `${data.signedUrl}&t=${Date.now()}`;
+  } catch (err) {
+    console.warn('Exception creating signed URL for avatar:', err);
+    return fallbackUrl || null;
+  }
+}
+
+/**
+ * Extracts the storage path from a URL or returns the path as-is.
+ * Ensures public.profiles.avatar_url stores the storage path (e.g. "USER_ID/profile.jpg"),
+ * not a temporary signed URL.
+ */
+export function extractStoragePath(urlOrPath: string | null | undefined): string | null {
+  if (!urlOrPath || !urlOrPath.trim()) return null;
+  const clean = urlOrPath.trim();
+
+  // If it's a Supabase storage URL:
+  const avatarsMatch = clean.match(/\/storage\/v1\/object\/(?:public|sign)\/avatars\/([^?]+)/);
+  if (avatarsMatch && avatarsMatch[1]) {
+    return decodeURIComponent(avatarsMatch[1]);
+  }
+
+  // If it's a prefixed path "avatars/USER_ID/profile.ext"
+  if (clean.startsWith('avatars/')) {
+    return clean.replace(/^avatars\//, '');
+  }
+
+  return clean;
+}
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   if (!isSupabaseConfigured() || !userId) return null;
@@ -20,20 +106,26 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 
     const profileData = data as Profile;
 
-    // If avatar_url is a relative storage path (e.g. "USER_ID/profile.jpg")
-    // generate a signed URL from the private avatars bucket
-    if (profileData.avatar_url && !profileData.avatar_url.startsWith('http')) {
-      try {
-        const cleanPath = profileData.avatar_url.replace(/^avatars\//, '');
-        const { data: signed } = await supabase.storage
-          .from('avatars')
-          .createSignedUrl(cleanPath, 60 * 60 * 24 * 365);
-        if (signed?.signedUrl) {
-          profileData.avatar_url = signed.signedUrl;
-        }
-      } catch (err) {
-        console.warn('Error resolving avatar storage path:', err);
+    // Get current user to check for OAuth fallback picture if student hasn't uploaded one
+    let oauthPictureFallback: string | null = null;
+    try {
+      const { data: authUser } = await supabase.auth.getUser();
+      if (authUser?.user && authUser.user.id === userId) {
+        oauthPictureFallback =
+          authUser.user.user_metadata?.avatar_url ||
+          authUser.user.user_metadata?.picture ||
+          null;
       }
+    } catch {
+      // Non-critical fallback check
+    }
+
+    // Resolve avatar_url to a signed URL if it's a storage path, or use OAuth picture fallback
+    if (profileData.avatar_url) {
+      const signed = await getSignedAvatarUrl(profileData.avatar_url, oauthPictureFallback);
+      profileData.avatar_url = signed;
+    } else if (oauthPictureFallback) {
+      profileData.avatar_url = oauthPictureFallback;
     }
 
     return profileData;
@@ -74,7 +166,11 @@ export async function updateProfile(
   if (updates.college_name !== undefined) payload.college_name = updates.college_name.trim();
   if (updates.year_of_study !== undefined) payload.year_of_study = updates.year_of_study;
   if (updates.semester !== undefined) payload.semester = updates.semester;
-  if (updates.avatar_url !== undefined) payload.avatar_url = updates.avatar_url;
+
+  // Ensure storage path is saved, not a temporary signed URL
+  if (updates.avatar_url !== undefined) {
+    payload.avatar_url = extractStoragePath(updates.avatar_url);
+  }
 
   const { data, error } = await supabase
     .from('profiles')
@@ -87,13 +183,25 @@ export async function updateProfile(
     throw new Error(`Failed to update profile: ${error.message}`);
   }
 
-  return data as Profile;
+  const updatedProfile = data as Profile;
+
+  // Resolve signed URL for the returned in-memory Profile
+  if (updatedProfile.avatar_url) {
+    const signed = await getSignedAvatarUrl(updatedProfile.avatar_url);
+    if (signed) {
+      updatedProfile.avatar_url = signed;
+    }
+  }
+
+  return updatedProfile;
 }
 
 /**
  * Uploads a profile photo to the private 'avatars' bucket.
  * Structure: avatars/{user_id}/profile.{extension}
  * Accepts JPG, JPEG, PNG, and WEBP up to 5 MB.
+ * Stores STORAGE PATH in public.profiles.avatar_url.
+ * Returns a fresh signed URL for immediate UI display.
  */
 export async function uploadAvatar(file: File, expectedUserId?: string): Promise<string>;
 export async function uploadAvatar(expectedUserId: string, file: File): Promise<string>;
@@ -212,24 +320,18 @@ export async function uploadAvatar(
     throw new Error(`Profile photo upload failed: ${uploadError.message}`);
   }
 
-  // 8. Generate avatar reference for private bucket via signed URL (1 year validity)
+  // 8. Store the STORAGE PATH in public.profiles.avatar_url (NOT the temporary signed URL)
+  await updateProfile(user.id, { avatar_url: filePath });
+
+  // 9. Generate a signed URL for immediate UI display (24 hours validity)
   const { data: signedData } = await supabase.storage
     .from('avatars')
-    .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+    .createSignedUrl(filePath, 86400);
 
-  let avatarRef = '';
-  if (signedData?.signedUrl) {
-    avatarRef = signedData.signedUrl;
-  } else {
-    const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    avatarRef = publicData.publicUrl;
-  }
+  const displaySignedUrl = signedData?.signedUrl
+    ? `${signedData.signedUrl}&t=${Date.now()}`
+    : filePath;
 
-  // Add cache-busting timestamp so browser immediately reflects the new picture
-  const finalAvatarUrl = `${avatarRef}${avatarRef.includes('?') ? '&' : '?'}t=${Date.now()}`;
-
-  // Update public.profiles.avatar_url with the resulting avatar reference
-  await updateProfile(user.id, { avatar_url: finalAvatarUrl });
-
-  return finalAvatarUrl;
+  return displaySignedUrl;
 }
+

@@ -2,13 +2,18 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { isProfileComplete } from '../types/profile';
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;
+  allowIncomplete?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  allowIncomplete = false,
+}) => {
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -33,6 +38,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (isEmailUnconfirmed) {
     return <Navigate to={`/auth/verify-email?email=${encodeURIComponent(user.email || '')}`} replace />;
+  }
+
+  // If student profile is incomplete and route does not allow incomplete profile,
+  // redirect them to /complete-profile
+  if (!allowIncomplete && !isProfileComplete(profile) && location.pathname !== '/complete-profile') {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   return <>{children}</>;

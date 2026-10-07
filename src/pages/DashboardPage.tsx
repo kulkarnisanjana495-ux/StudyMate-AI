@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
+import { ProfileAvatar } from '../components/ProfileAvatar';
 
 interface ModuleCard {
   id: string;
@@ -103,23 +104,26 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-8">
       {/* Welcome Banner */}
       <section className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-sm relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-400/20">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Academic Portal</span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
-            Welcome back, {studentName} 👋
-          </h1>
-
-          <div className="space-y-1">
-            <h2 className="text-lg sm:text-xl font-bold text-indigo-200">
-              StudyMate AI
-            </h2>
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl">
-              Your personalized academic learning assistant.
-            </p>
+        <div className="relative z-10 max-w-4xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <ProfileAvatar
+              name={studentName}
+              avatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
+              size="xl"
+              className="border-2 border-white/20 shadow-md shrink-0"
+            />
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-400/20">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Academic Portal</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Welcome back, {studentName} 👋
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300">
+                StudyMate AI • Your personalized academic learning assistant.
+              </p>
+            </div>
           </div>
 
           {/* Quick Academic Profile Summary */}

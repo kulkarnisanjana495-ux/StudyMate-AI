@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, GraduationCap, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { signInWithEmail, resendVerificationEmail, formatAuthError } from '../services/auth/authService';
+import { isProfileComplete } from '../types/profile';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
@@ -12,7 +13,7 @@ import { BackButton } from '../components/BackButton';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,11 +29,15 @@ export const LoginPage: React.FC = () => {
     if (user) {
       const isEmailUnconfirmed = user.app_metadata?.provider === 'email' && !user.email_confirmed_at;
       if (!isEmailUnconfirmed) {
-        const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
-        navigate(from, { replace: true });
+        if (profile && !isProfileComplete(profile)) {
+          navigate('/complete-profile', { replace: true });
+        } else {
+          const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
+          navigate(from, { replace: true });
+        }
       }
     }
-  }, [user, navigate, location]);
+  }, [user, profile, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -8,10 +8,11 @@ import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { OAuthButtons } from '../components/OAuthButtons';
 import { BackButton } from '../components/BackButton';
+import { isProfileComplete } from '../types/profile';
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,10 +27,14 @@ export const SignupPage: React.FC = () => {
     if (user) {
       const isEmailUnconfirmed = user.app_metadata?.provider === 'email' && !user.email_confirmed_at;
       if (!isEmailUnconfirmed) {
-        navigate('/dashboard', { replace: true });
+        if (profile && !isProfileComplete(profile)) {
+          navigate('/complete-profile', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       }
     }
-  }, [user, navigate]);
+  }, [user, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

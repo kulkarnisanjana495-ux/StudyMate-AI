@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -15,13 +15,20 @@ import {
   Building,
   Upload,
   Link as LinkIcon,
+  KeyRound,
+  LogOut,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { updateProfile, uploadAvatar } from '../services/profile/profileService';
+import { updatePassword } from '../services/auth/authService';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
+import { Modal } from '../components/ui/Modal';
 import { BackButton } from '../components/BackButton';
 import {
   YEAR_OPTIONS,
@@ -31,7 +38,8 @@ import {
 } from '../constants/academic';
 
 export const ProfilePage: React.FC = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +47,15 @@ export const ProfilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Change Password Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordModalFeedback, setPasswordModalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -214,6 +231,47 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordModalFeedback({
+        type: 'error',
+        message: 'Password must be at least 6 characters long.',
+      });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordModalFeedback({
+        type: 'error',
+        message: 'Passwords do not match.',
+      });
+      return;
+    }
+
+    try {
+      setSavingPassword(true);
+      setPasswordModalFeedback(null);
+      await updatePassword(newPassword);
+      setFeedback({
+        type: 'success',
+        message: 'Password updated successfully!',
+      });
+      setIsPasswordModalOpen(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update password.';
+      setPasswordModalFeedback({ type: 'error', message: msg });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   const displayName = profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
   const displayEmail = profile?.email || user?.email || '';
   const isEmailVerified = Boolean(user?.email_confirmed_at);
@@ -248,14 +306,37 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {!isEditing && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleStartEditing}
-            leftIcon={<Edit3 className="w-4 h-4" />}
-          >
-            Edit Profile
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartEditing}
+              leftIcon={<Edit3 className="w-4 h-4" />}
+            >
+              Edit Profile
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPasswordModalFeedback(null);
+                setNewPassword('');
+                setConfirmNewPassword('');
+                setIsPasswordModalOpen(true);
+              }}
+              leftIcon={<KeyRound className="w-4 h-4 text-indigo-500" />}
+            >
+              Change Password
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              leftIcon={<LogOut className="w-4 h-4 text-rose-500" />}
+            >
+              Logout
+            </Button>
+          </div>
         )}
       </div>
 
@@ -274,7 +355,7 @@ export const ProfilePage: React.FC = () => {
             <div className="relative group">
               <ProfileAvatar
                 name={displayName}
-                avatarUrl={profile?.avatar_url || avatarUrlInput}
+                avatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || avatarUrlInput}
                 size="xl"
                 className="border-4 border-white/20 shadow-xl"
               />
@@ -588,6 +669,97 @@ export const ProfilePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        title="Change Password"
+        description="Update your StudyMate account password securely via Supabase Auth."
+      >
+        <form onSubmit={handlePasswordChange} className="space-y-4 pt-2">
+          {passwordModalFeedback && (
+            <Alert
+              variant={passwordModalFeedback.type}
+              onDismiss={() => setPasswordModalFeedback(null)}
+            >
+              {passwordModalFeedback.message}
+            </Alert>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              New Password *
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                placeholder="Enter new password (min. 6 chars)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm py-2.5 pl-10 pr-10 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Confirm New Password *
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type={showConfirmNewPassword ? 'text' : 'password'}
+                placeholder="Confirm new password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm py-2.5 pl-10 pr-10 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmNewPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                {showConfirmNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsPasswordModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={savingPassword}
+              leftIcon={<KeyRound className="w-4 h-4" />}
+            >
+              Update Password
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

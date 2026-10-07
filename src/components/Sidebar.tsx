@@ -221,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <div className="flex items-center gap-3 p-1.5 rounded-xl">
               <ProfileAvatar
                 name={displayName}
-                avatarUrl={profile?.avatar_url}
+                avatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
                 size="sm"
               />
               <div className="min-w-0 flex-1">

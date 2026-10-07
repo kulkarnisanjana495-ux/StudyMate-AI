@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
+const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : (typeof process !== 'undefined' ? process.env : {});
+
 export const SUPABASE_URL: string =
-  import.meta.env.VITE_SUPABASE_URL || 'https://zsbtxwiumftuknheynrh.supabase.co';
+  (env as Record<string, string | undefined>).VITE_SUPABASE_URL || 'https://zsbtxwiumftuknheynrh.supabase.co';
 
 export const SUPABASE_ANON_KEY: string =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
+  (env as Record<string, string | undefined>).VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
 
 // Single browser Supabase client instance across the application lifecycle
 export const supabase = createClient(

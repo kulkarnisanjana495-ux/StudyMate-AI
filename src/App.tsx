@@ -15,6 +15,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { CompleteProfilePage } from './pages/CompleteProfilePage';
 import { ModuleFeaturePage } from './pages/ModuleFeaturePage';
 
 // Route listener to automatically route password recovery tokens
@@ -59,6 +60,14 @@ export default function App() {
 
               {/* Protected Routes */}
               <Route
+                path="/complete-profile"
+                element={
+                  <ProtectedRoute allowIncomplete>
+                    <CompleteProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
@@ -69,7 +78,7 @@ export default function App() {
               <Route
                 path="/profile"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowIncomplete>
                     <ProfilePage />
                   </ProtectedRoute>
                 }

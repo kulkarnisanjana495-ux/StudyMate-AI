@@ -47,7 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           year_of_study: null,
           semester: null,
           email: currentUser.email || null,
-          avatar_url: currentUser.user_metadata?.avatar_url || null,
+          avatar_url:
+            currentUser.user_metadata?.avatar_url ||
+            currentUser.user_metadata?.picture ||
+            null,
         });
 
         // Retry profile fetch after 1.5s in case DB trigger is asynchronous

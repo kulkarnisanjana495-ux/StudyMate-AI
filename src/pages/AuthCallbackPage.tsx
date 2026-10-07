@@ -9,7 +9,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { fetchProfile } from '../services/profile/profileService';
+import { fetchProfile, isProfileComplete } from '../services/profile/profileService';
 import { resendVerificationEmail, formatAuthError } from '../services/auth/authService';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
@@ -57,14 +57,20 @@ export const AuthCallbackPage: React.FC = () => {
 
       setStatus('success');
 
+      let isComplete = false;
       try {
-        await fetchProfile(userId);
+        const userProfile = await fetchProfile(userId);
+        isComplete = isProfileComplete(userProfile);
       } catch (err) {
         console.warn('Profile fetch after OAuth:', err);
       }
 
       if (!isCancelled) {
-        navigate('/dashboard', { replace: true });
+        if (isComplete) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/complete-profile', { replace: true });
+        }
       }
     };
 

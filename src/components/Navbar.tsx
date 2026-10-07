@@ -111,7 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, pageTitle }) =>
               >
                 <ProfileAvatar
                   name={displayName}
-                  avatarUrl={profile?.avatar_url}
+                  avatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
                   size="sm"
                 />
                 <span className="hidden sm:inline-block text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-[120px] truncate">
@@ -127,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, pageTitle }) =>
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                     <ProfileAvatar
                       name={displayName}
-                      avatarUrl={profile?.avatar_url}
+                      avatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
                       size="md"
                     />
                     <div className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getSignedAvatarUrl } from '../services/profile/profileService';
 
 export interface ProfileAvatarProps {
   name?: string | null;
@@ -40,11 +41,36 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   size = 'md',
   className = '',
 }) => {
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
 
-  // Reset error state when avatarUrl changes
   useEffect(() => {
     setImageError(false);
+    let isCurrent = true;
+
+    if (!avatarUrl || !avatarUrl.trim()) {
+      setDisplayUrl(null);
+      return;
+    }
+
+    const trimmed = avatarUrl.trim();
+
+    // If it's already an absolute URL
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      setDisplayUrl(trimmed);
+      return;
+    }
+
+    // It's a storage path like "USER_ID/profile.jpg" - resolve signed URL
+    getSignedAvatarUrl(trimmed).then((signed) => {
+      if (isCurrent) {
+        setDisplayUrl(signed);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [avatarUrl]);
 
   const sizeClasses = {
@@ -58,13 +84,13 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   const initials = getInitials(name);
   const gradient = getGradientFromName(name);
 
-  if (avatarUrl && !imageError) {
+  if (displayUrl && !imageError) {
     return (
       <div
         className={`relative rounded-full overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 ${sizeClasses[size]} ${className}`}
       >
         <img
-          src={avatarUrl}
+          src={displayUrl}
           alt={name || 'Student Avatar'}
           className="w-full h-full object-cover"
           onError={() => setImageError(true)}
@@ -82,3 +108,4 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
     </div>
   );
 };
+
