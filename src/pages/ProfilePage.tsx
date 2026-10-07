@@ -23,29 +23,12 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { BackButton } from '../components/BackButton';
-
-const YEAR_OPTIONS = [
-  '1st Year',
-  '2nd Year',
-  '3rd Year',
-  '4th Year',
-  '5th Year',
-  'Postgraduate / Masters',
-  'PhD / Research Scholar',
-];
-
-const SEMESTER_OPTIONS = [
-  'Semester 1',
-  'Semester 2',
-  'Semester 3',
-  'Semester 4',
-  'Semester 5',
-  'Semester 6',
-  'Semester 7',
-  'Semester 8',
-  'Semester 9',
-  'Semester 10',
-];
+import {
+  YEAR_OPTIONS,
+  getSemestersForYear,
+  isSemesterValidForYear,
+  normalizeSemester,
+} from '../constants/academic';
 
 export const ProfilePage: React.FC = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -70,8 +53,20 @@ export const ProfilePage: React.FC = () => {
     if (profile) {
       setName(profile.name || user?.user_metadata?.full_name || user?.user_metadata?.name || '');
       setCollegeName(profile.college_name || '');
-      setYearOfStudy(profile.year_of_study || '');
-      setSemester(profile.semester || '');
+      const currentYear = profile.year_of_study || '';
+      setYearOfStudy(currentYear);
+
+      const normSem = normalizeSemester(profile.semester);
+      if (currentYear) {
+        if (isSemesterValidForYear(currentYear, normSem)) {
+          setSemester(normSem);
+        } else {
+          setSemester('');
+        }
+      } else {
+        setSemester(normSem);
+      }
+
       setAvatarUrlInput(profile.avatar_url || '');
     } else if (user) {
       setName(user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '');
@@ -86,6 +81,18 @@ export const ProfilePage: React.FC = () => {
     }
   }, [searchParams]);
 
+  /**
+   * Dynamically update Year and reset Semester if no longer valid.
+   * Example: 1st Year (2nd Semester) -> 2nd Year -> semester resets to empty.
+   */
+  const handleYearChange = (newYear: string) => {
+    setYearOfStudy(newYear);
+    const validSemesters = getSemestersForYear(newYear);
+    if (!validSemesters.includes(semester)) {
+      setSemester('');
+    }
+  };
+
   const handleStartEditing = () => {
     setIsEditing(true);
     setSearchParams({ edit: 'true' });
@@ -98,8 +105,20 @@ export const ProfilePage: React.FC = () => {
     if (profile) {
       setName(profile.name || '');
       setCollegeName(profile.college_name || '');
-      setYearOfStudy(profile.year_of_study || '');
-      setSemester(profile.semester || '');
+      const currentYear = profile.year_of_study || '';
+      setYearOfStudy(currentYear);
+
+      const normSem = normalizeSemester(profile.semester);
+      if (currentYear) {
+        if (isSemesterValidForYear(currentYear, normSem)) {
+          setSemester(normSem);
+        } else {
+          setSemester('');
+        }
+      } else {
+        setSemester(normSem);
+      }
+
       setAvatarUrlInput(profile.avatar_url || '');
     }
   };
@@ -139,20 +158,52 @@ export const ProfilePage: React.FC = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+
+    if (!user) {
+      setFeedback({
+        type: 'error',
+        message: 'Please sign in before uploading a profile photo.',
+      });
+      return;
+    }
+
+    // Client-side quick validation: only JPG, JPEG, PNG, WEBP and <= 5 MB
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!allowedExtensions.includes(fileExtension)) {
+      setFeedback({
+        type: 'error',
+        message: 'Unsupported image format. Allowed formats are JPG, JPEG, PNG, and WEBP.',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedback({
+        type: 'error',
+        message: 'Profile photo file size exceeds 5 MB. Please select a smaller image.',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     try {
       setUploadingPhoto(true);
       setFeedback(null);
-      const newUrl = await uploadAvatar(user.id, file);
+      const newUrl = await uploadAvatar(file, user.id);
       setAvatarUrlInput(newUrl);
       await refreshProfile();
-      setFeedback({ type: 'success', message: 'Avatar image uploaded and updated successfully!' });
+      setFeedback({
+        type: 'success',
+        message: 'Profile photo uploaded and updated successfully!',
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Photo upload failed.';
       setFeedback({
         type: 'error',
-        message: `${msg}. You can also provide an image URL directly below.`,
+        message: msg,
       });
       setShowAvatarUrlField(true);
     } finally {
@@ -248,7 +299,7 @@ export const ProfilePage: React.FC = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                 onChange={handleFileUpload}
                 className="hidden"
               />
@@ -325,8 +376,9 @@ export const ProfilePage: React.FC = () => {
                       <GraduationCap className="w-4 h-4" />
                     </div>
                     <select
+                      id="year-of-study-select"
                       value={yearOfStudy}
-                      onChange={(e) => setYearOfStudy(e.target.value)}
+                      onChange={(e) => handleYearChange(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20"
                     >
                       <option value="">Select current year</option>
@@ -339,7 +391,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Semester */}
+                {/* Semester (Dynamically depends on selected Year of Study) */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Semester
@@ -349,18 +401,27 @@ export const ProfilePage: React.FC = () => {
                       <Layers className="w-4 h-4" />
                     </div>
                     <select
+                      id="semester-select"
                       value={semester}
                       onChange={(e) => setSemester(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20"
+                      disabled={!yearOfStudy}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <option value="">Select current semester</option>
-                      {SEMESTER_OPTIONS.map((sem) => (
+                      <option value="">
+                        {yearOfStudy ? 'Select current semester' : 'Select year of study first'}
+                      </option>
+                      {getSemestersForYear(yearOfStudy).map((sem) => (
                         <option key={sem} value={sem}>
                           {sem}
                         </option>
                       ))}
                     </select>
                   </div>
+                  {!yearOfStudy && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Select your Year of Study to see available semesters.
+                    </p>
+                  )}
                 </div>
 
                 {/* Avatar URL or Upload Helper */}
@@ -391,7 +452,7 @@ export const ProfilePage: React.FC = () => {
                       Upload New Photo (Storage)
                     </Button>
                     <span className="text-[11px] text-slate-400">
-                      Max file size: 2MB (JPG, PNG, WebP)
+                      Max file size: 5 MB (JPG, PNG, WEBP)
                     </span>
                   </div>
 

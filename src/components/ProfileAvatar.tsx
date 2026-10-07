@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export interface ProfileAvatarProps {
   name?: string | null;
@@ -41,6 +41,11 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   className = '',
 }) => {
   const [imageError, setImageError] = useState(false);
+
+  // Reset error state when avatarUrl changes
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUrl]);
 
   const sizeClasses = {
     xs: 'w-6 h-6 text-[10px]',
