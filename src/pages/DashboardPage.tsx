@@ -171,7 +171,7 @@ export const DashboardPage: React.FC = () => {
             return (
               <div
                 key={mod.id}
-                onClick={() => setSelectedModule(mod)}
+                onClick={() => navigate(`/modules/${mod.id}`)}
                 className="group relative p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
               >
                 <div>

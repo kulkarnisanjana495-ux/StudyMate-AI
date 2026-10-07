@@ -60,31 +60,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     {
       title: 'ACADEMIC LEARNING',
       items: [
-        { name: 'AI PDF Learning', icon: FileText, badge: 'Coming soon', disabled: true },
-        { name: 'AI Tutor', icon: Bot, badge: 'Coming soon', disabled: true },
-        { name: 'Question Generator', icon: HelpCircle, badge: 'Coming soon', disabled: true },
-        { name: 'Quiz & Mock Test', icon: Award, badge: 'Coming soon', disabled: true },
+        { name: 'AI PDF Learning', icon: FileText, path: '/modules/pdf-learning' },
+        { name: 'AI Tutor', icon: Bot, path: '/modules/ai-tutor' },
+        { name: 'Question Generator', icon: HelpCircle, path: '/modules/question-generator' },
+        { name: 'Quiz & Mock Test', icon: Award, path: '/modules/quiz' },
       ],
     },
     {
       title: 'EXAM PREPARATION',
       items: [
-        { name: 'Exam Preparation', icon: BookOpenCheck, badge: 'Coming soon', disabled: true },
-        { name: 'Study Planner', icon: CalendarCheck, badge: 'Coming soon', disabled: true },
-        { name: 'Last-Minute Revision', icon: Zap, badge: 'Coming soon', disabled: true },
-        { name: 'Previous-Year Analyzer', icon: FileSearch, badge: 'Coming soon', disabled: true },
+        { name: 'Exam Preparation', icon: BookOpenCheck, path: '/modules/exam-prep' },
+        { name: 'Study Planner', icon: CalendarCheck, path: '/modules/study-planner' },
+        { name: 'Last-Minute Revision', icon: Zap, path: '/modules/revision' },
+        { name: 'Previous-Year Analyzer', icon: FileSearch, path: '/modules/pyq-analyzer' },
       ],
     },
     {
       title: 'PLACEMENT & CAREER',
       items: [
-        { name: 'Aptitude Practice', icon: Briefcase, badge: 'Coming soon', disabled: true },
+        { name: 'Aptitude Practice', icon: Briefcase, path: '/modules/aptitude' },
       ],
     },
     {
       title: 'PERFORMANCE',
       items: [
-        { name: 'Progress & Analytics', icon: TrendingUp, badge: 'Coming soon', disabled: true },
+        { name: 'Progress & Analytics', icon: TrendingUp, path: '/modules/analytics' },
       ],
     },
   ];

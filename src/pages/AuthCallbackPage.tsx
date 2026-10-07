@@ -13,6 +13,7 @@ import { fetchProfile } from '../services/profile/profileService';
 import { resendVerificationEmail, formatAuthError } from '../services/auth/authService';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
+import { BackButton } from '../components/BackButton';
 
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
@@ -221,7 +222,7 @@ export const AuthCallbackPage: React.FC = () => {
     if (!resendEmail.trim()) {
       setResendFeedback({
         type: 'error',
-        message: 'Please enter your registered university email to receive a new link.',
+        message: 'Please enter your registered email address to receive a new link.',
       });
       return;
     }
@@ -247,6 +248,10 @@ export const AuthCallbackPage: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12">
+      <div className="mb-4 flex items-center justify-start">
+        <BackButton fallback="/login" label="Back to Login" />
+      </div>
+
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm text-center">
         {/* Loading State */}
         {status === 'loading' && (
@@ -315,7 +320,7 @@ export const AuthCallbackPage: React.FC = () => {
             <form onSubmit={handleResend} className="space-y-3 pt-1 text-left">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Resend verification to university email
+                  Resend verification to email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -323,7 +328,7 @@ export const AuthCallbackPage: React.FC = () => {
                   </div>
                   <input
                     type="email"
-                    placeholder="student@college.edu"
+                    placeholder="Enter your Gmail"
                     value={resendEmail}
                     onChange={(e) => setResendEmail(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-xs py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20"

@@ -15,6 +15,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ModuleFeaturePage } from './pages/ModuleFeaturePage';
 
 // Route listener to automatically route password recovery tokens
 function AuthEventListener() {
@@ -72,6 +73,58 @@ export default function App() {
                     <ProfilePage />
                   </ProtectedRoute>
                 }
+              />
+              <Route
+                path="/modules/:moduleId"
+                element={
+                  <ProtectedRoute>
+                    <ModuleFeaturePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pdf-learning"
+                element={<Navigate to="/modules/pdf-learning" replace />}
+              />
+              <Route
+                path="/ai-tutor"
+                element={<Navigate to="/modules/ai-tutor" replace />}
+              />
+              <Route
+                path="/question-generator"
+                element={<Navigate to="/modules/question-generator" replace />}
+              />
+              <Route
+                path="/quiz"
+                element={<Navigate to="/modules/quiz" replace />}
+              />
+              <Route
+                path="/mock-test"
+                element={<Navigate to="/modules/mock-test" replace />}
+              />
+              <Route
+                path="/exam-prep"
+                element={<Navigate to="/modules/exam-prep" replace />}
+              />
+              <Route
+                path="/study-planner"
+                element={<Navigate to="/modules/study-planner" replace />}
+              />
+              <Route
+                path="/revision"
+                element={<Navigate to="/modules/revision" replace />}
+              />
+              <Route
+                path="/pyq-analyzer"
+                element={<Navigate to="/modules/pyq-analyzer" replace />}
+              />
+              <Route
+                path="/aptitude"
+                element={<Navigate to="/modules/aptitude" replace />}
+              />
+              <Route
+                path="/analytics"
+                element={<Navigate to="/modules/analytics" replace />}
               />
 
               {/* Fallback */}

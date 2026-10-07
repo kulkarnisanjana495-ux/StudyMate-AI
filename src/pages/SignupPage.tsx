@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, UserPlus, GraduationCap, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, UserPlus, GraduationCap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { signUpWithEmail } from '../services/auth/authService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { OAuthButtons } from '../components/OAuthButtons';
+import { BackButton } from '../components/BackButton';
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,11 +36,16 @@ export const SignupPage: React.FC = () => {
     setError(null);
 
     if (!fullName.trim()) {
-      setError('Please provide your full student name.');
+      setError('Please enter your name.');
       return;
     }
     if (!email.trim()) {
-      setError('Please enter a valid university email address.');
+      setError('Please enter a valid email address.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
     }
     if (password.length < 6) {
@@ -55,9 +61,9 @@ export const SignupPage: React.FC = () => {
       setLoading(true);
       const { user: registeredUser, session: registeredSession, requiresVerification } =
         await signUpWithEmail({
-          email,
+          email: email.trim(),
           password,
-          fullName,
+          fullName: fullName.trim(),
         });
 
       if (requiresVerification || !registeredSession) {
@@ -77,6 +83,10 @@ export const SignupPage: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12">
+      <div className="mb-4 flex items-center justify-start">
+        <BackButton fallback="/" label="Back" />
+      </div>
+
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
         {/* Header */}
         <div className="text-center space-y-2 mb-6">
@@ -109,7 +119,7 @@ export const SignupPage: React.FC = () => {
             </div>
             <div className="relative flex justify-center text-xs">
               <span className="px-3 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
-                Or with university email
+                Or with email
               </span>
             </div>
           </div>
@@ -119,7 +129,7 @@ export const SignupPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Full Name"
-            placeholder="e.g. Rashmi Chimmalagi"
+            placeholder="Enter your name"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             leftIcon={<User className="w-4 h-4" />}
@@ -128,9 +138,9 @@ export const SignupPage: React.FC = () => {
           />
 
           <Input
-            label="University Email"
+            label="Email"
             type="email"
-            placeholder="student@college.edu"
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             leftIcon={<Mail className="w-4 h-4" />}
@@ -149,7 +159,7 @@ export const SignupPage: React.FC = () => {
               </div>
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="At least 6 characters"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

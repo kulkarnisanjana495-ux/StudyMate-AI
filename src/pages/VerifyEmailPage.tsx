@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { resendVerificationEmail, formatAuthError } from '../services/auth/authService';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
+import { BackButton } from '../components/BackButton';
 
 export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -40,7 +41,7 @@ export const VerifyEmailPage: React.FC = () => {
     if (!targetEmail) {
       setResendStatus({
         type: 'error',
-        message: 'Please enter your registered university email address to resend.',
+        message: 'Please enter your registered email address to resend.',
       });
       return;
     }
@@ -66,6 +67,10 @@ export const VerifyEmailPage: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12">
+      <div className="mb-4 flex items-center justify-start">
+        <BackButton fallback="/login" label="Back to Login" />
+      </div>
+
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm text-center">
         {/* Verification Success State */}
         {isVerified ? (
@@ -77,7 +82,7 @@ export const VerifyEmailPage: React.FC = () => {
               Email Verified Successfully!
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Your university email is confirmed. You can now access your full academic dashboard and student profile.
+              Your email is confirmed. You can now access your full academic dashboard and student profile.
             </p>
             <div className="pt-2">
               <Button
@@ -130,7 +135,7 @@ export const VerifyEmailPage: React.FC = () => {
                   </div>
                   <input
                     type="email"
-                    placeholder="student@college.edu"
+                    placeholder="Enter your Gmail"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-xs py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20"

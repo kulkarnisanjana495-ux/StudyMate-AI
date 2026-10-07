@@ -5,6 +5,7 @@ import { sendPasswordResetEmail } from '../services/auth/authService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
+import { BackButton } from '../components/BackButton';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ export const ForgotPasswordPage: React.FC = () => {
     setError(null);
 
     if (!email.trim()) {
-      setError('Please provide your university email address.');
+      setError('Please provide your email address.');
       return;
     }
 
@@ -35,6 +36,10 @@ export const ForgotPasswordPage: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12">
+      <div className="mb-4 flex items-center justify-start">
+        <BackButton fallback="/login" label="Back to Login" />
+      </div>
+
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
         <div className="text-center space-y-2 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 mx-auto flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs">
@@ -44,7 +49,7 @@ export const ForgotPasswordPage: React.FC = () => {
             Reset Password
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Enter your registered university email to receive a password reset link.
+            Enter your registered email address to receive a password reset link.
           </p>
         </div>
 
@@ -89,9 +94,9 @@ export const ForgotPasswordPage: React.FC = () => {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="University Email"
+              label="Email address"
               type="email"
-              placeholder="student@college.edu"
+              placeholder="Enter your Gmail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               leftIcon={<Mail className="w-4 h-4" />}

@@ -22,6 +22,7 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
+import { BackButton } from '../components/BackButton';
 
 const YEAR_OPTIONS = [
   '1st Year',
@@ -168,6 +169,22 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Back Navigation Button */}
+      <div className="flex items-center justify-start">
+        {isEditing ? (
+          <BackButton
+            label="Back to Profile"
+            onClick={handleCancelEditing}
+            fallback="/profile"
+          />
+        ) : (
+          <BackButton
+            fallback="/dashboard"
+            label="Back to Dashboard"
+          />
+        )}
+      </div>
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -282,7 +299,7 @@ export const ProfilePage: React.FC = () => {
 
                 {/* Email (Read Only per specifications) */}
                 <Input
-                  label="University Email (Read-Only)"
+                  label="Email Address (Read-Only)"
                   value={displayEmail}
                   disabled
                   leftIcon={<Mail className="w-4 h-4" />}
@@ -430,7 +447,7 @@ export const ProfilePage: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-1">
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     <Mail className="w-3.5 h-3.5" />
-                    <span>University Email</span>
+                    <span>Email Address</span>
                   </div>
                   <p className="text-base font-bold text-slate-900 dark:text-white truncate">
                     {displayEmail || 'Not provided'}

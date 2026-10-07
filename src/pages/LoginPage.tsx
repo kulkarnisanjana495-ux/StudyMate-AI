@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { OAuthButtons } from '../components/OAuthButtons';
+import { BackButton } from '../components/BackButton';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export const LoginPage: React.FC = () => {
     setResendMessage(null);
 
     if (!email.trim()) {
-      setError('Please enter your university email address.');
+      setError('Please enter your email address.');
       return;
     }
     if (!password) {
@@ -104,6 +105,10 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12">
+      <div className="mb-4 flex items-center justify-start">
+        <BackButton fallback="/" label="Back" />
+      </div>
+
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm">
         {/* Header */}
         <div className="text-center space-y-2 mb-6">
@@ -156,17 +161,7 @@ export const LoginPage: React.FC = () => {
         {/* OAuth Buttons */}
         <div className="mb-6">
           <OAuthButtons onError={(err) => setError(err)} />
-
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-3 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
-                Or with university email
-              </span>
-            </div>
-          </div>
+          <div className="my-5 border-t border-slate-200 dark:border-slate-800" />
         </div>
 
         {/* Form */}
@@ -174,7 +169,7 @@ export const LoginPage: React.FC = () => {
           <Input
             label="Email address"
             type="email"
-            placeholder="student@college.edu"
+            placeholder="Enter your Gmail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             leftIcon={<Mail className="w-4 h-4" />}
@@ -200,7 +195,7 @@ export const LoginPage: React.FC = () => {
               </div>
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
