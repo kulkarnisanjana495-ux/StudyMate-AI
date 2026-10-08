@@ -15,6 +15,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { isProfileComplete } from '../types/profile';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { ProfileAvatar } from '../components/ProfileAvatar';
@@ -98,7 +99,7 @@ export const DashboardPage: React.FC = () => {
     },
   ];
 
-  const hasIncompleteProfile = !profile?.college_name || !profile?.year_of_study || !profile?.semester;
+  const hasIncompleteProfile = !isProfileComplete(profile);
 
   return (
     <div className="space-y-8">

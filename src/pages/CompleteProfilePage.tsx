@@ -26,6 +26,7 @@ import {
   normalizeSemester,
 } from '../constants/academic';
 import { ProfileAvatar } from '../components/ProfileAvatar';
+import { CollegeSelector } from '../components/CollegeSelector';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
@@ -38,6 +39,7 @@ export const CompleteProfilePage: React.FC = () => {
   // Form states
   const [name, setName] = useState('');
   const [collegeName, setCollegeName] = useState('');
+  const [collegeId, setCollegeId] = useState<string | null>(null);
   const [yearOfStudy, setYearOfStudy] = useState('');
   const [semester, setSemester] = useState('');
   const [email, setEmail] = useState('');
@@ -72,6 +74,7 @@ export const CompleteProfilePage: React.FC = () => {
 
       setName(profile?.name || oauthName);
       setCollegeName(profile?.college_name || '');
+      setCollegeId(profile?.college_id || null);
 
       const currentYear = profile?.year_of_study || '';
       setYearOfStudy(currentYear);
@@ -208,6 +211,7 @@ export const CompleteProfilePage: React.FC = () => {
       await updateProfile(user.id, {
         name: name.trim(),
         college_name: collegeName.trim(),
+        college_id: collegeId || undefined,
         year_of_study: yearOfStudy,
         semester: semester,
       });
@@ -384,15 +388,20 @@ export const CompleteProfilePage: React.FC = () => {
                 helperText="Populated automatically from your verified account."
               />
 
-              {/* College Name */}
-              <Input
-                label="College / University Name *"
-                placeholder="e.g. National Institute of Engineering"
-                value={collegeName}
-                onChange={(e) => setCollegeName(e.target.value)}
-                leftIcon={<Building className="w-4 h-4" />}
-                required
-              />
+              {/* College Name - Searchable Combobox */}
+              <div className="md:col-span-2">
+                <CollegeSelector
+                  label="College Name"
+                  required
+                  value={collegeName}
+                  collegeId={collegeId}
+                  onChange={(selectedName, selectedId) => {
+                    setCollegeName(selectedName);
+                    setCollegeId(selectedId || null);
+                  }}
+                  helperText="Search engineering colleges by name, abbreviation (BEC, RVCE, NITK), city (bengaluru, belgaum), or state."
+                />
+              </div>
 
               {/* Year of Study */}
               <div>

@@ -30,6 +30,8 @@ import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { BackButton } from '../components/BackButton';
+import { CollegeSelector } from '../components/CollegeSelector';
+import { findCollegeByName } from '../services/college/collegeService';
 import {
   YEAR_OPTIONS,
   getSemestersForYear,
@@ -57,9 +59,13 @@ export const ProfilePage: React.FC = () => {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordModalFeedback, setPasswordModalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // College details for display mode
+  const profileCollegeDetails = profile?.college_name ? findCollegeByName(profile.college_name) : null;
+
   // Form State
   const [name, setName] = useState('');
   const [collegeName, setCollegeName] = useState('');
+  const [collegeId, setCollegeId] = useState<string | null>(null);
   const [yearOfStudy, setYearOfStudy] = useState('');
   const [semester, setSemester] = useState('');
   const [avatarUrlInput, setAvatarUrlInput] = useState('');
@@ -70,6 +76,7 @@ export const ProfilePage: React.FC = () => {
     if (profile) {
       setName(profile.name || user?.user_metadata?.full_name || user?.user_metadata?.name || '');
       setCollegeName(profile.college_name || '');
+      setCollegeId(profile.college_id || null);
       const currentYear = profile.year_of_study || '';
       setYearOfStudy(currentYear);
 
@@ -122,6 +129,7 @@ export const ProfilePage: React.FC = () => {
     if (profile) {
       setName(profile.name || '');
       setCollegeName(profile.college_name || '');
+      setCollegeId(profile.college_id || null);
       const currentYear = profile.year_of_study || '';
       setYearOfStudy(currentYear);
 
@@ -156,6 +164,7 @@ export const ProfilePage: React.FC = () => {
       await updateProfile(user.id, {
         name: name.trim(),
         college_name: collegeName.trim() || undefined,
+        college_id: collegeId || undefined,
         year_of_study: yearOfStudy || undefined,
         semester: semester || undefined,
         avatar_url: avatarUrlInput.trim() || undefined,
@@ -438,14 +447,20 @@ export const ProfilePage: React.FC = () => {
                   helperText="Registered email address is managed via Supabase Auth."
                 />
 
-                {/* College Name */}
-                <Input
-                  label="College / University Name"
-                  placeholder="e.g. National Institute of Engineering"
-                  value={collegeName}
-                  onChange={(e) => setCollegeName(e.target.value)}
-                  leftIcon={<Building className="w-4 h-4" />}
-                />
+                {/* College Name - Searchable Engineering College Selector */}
+                <div className="md:col-span-2">
+                  <CollegeSelector
+                    label="College Name"
+                    required
+                    value={collegeName}
+                    collegeId={collegeId}
+                    onChange={(selectedName, selectedId) => {
+                      setCollegeName(selectedName);
+                      setCollegeId(selectedId || null);
+                    }}
+                    helperText="Select your engineering institution from the official AISHE directory. You can search by college name, abbreviation (e.g., BEC, RV), city (e.g., Bengaluru, Belgaum), or state."
+                  />
+                </div>
 
                 {/* Year of Study */}
                 <div>
@@ -597,10 +612,17 @@ export const ProfilePage: React.FC = () => {
                 </div>
 
                 {/* College Name */}
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    <Building className="w-3.5 h-3.5" />
-                    <span>College / Institution</span>
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-1.5 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      <Building className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                      <span>College / Institution</span>
+                    </div>
+                    {profileCollegeDetails?.aishe_code && (
+                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full border border-indigo-200/60 dark:border-indigo-800/60">
+                        AISHE: {profileCollegeDetails.aishe_code}
+                      </span>
+                    )}
                   </div>
                   <p className="text-base font-bold text-slate-900 dark:text-white">
                     {profile?.college_name || (
@@ -609,6 +631,13 @@ export const ProfilePage: React.FC = () => {
                       </span>
                     )}
                   </p>
+                  {profileCollegeDetails && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap pt-0.5">
+                      <span>{profileCollegeDetails.city}, {profileCollegeDetails.state}</span>
+                      <span>•</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">{profileCollegeDetails.college_type}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Year of Study */}

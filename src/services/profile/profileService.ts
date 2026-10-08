@@ -91,11 +91,29 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   if (!isSupabaseConfigured() || !userId) return null;
 
   try {
-    const { data, error } = await supabase
+    let data: any = null;
+    let error: any = null;
+
+    // First attempt selecting with college_id
+    const resWithCollegeId = await supabase
       .from('profiles')
-      .select('id, name, college_name, year_of_study, semester, email, avatar_url, created_at, updated_at')
+      .select('id, name, college_name, college_id, year_of_study, semester, email, avatar_url, created_at, updated_at')
       .eq('id', userId)
       .maybeSingle();
+
+    if (resWithCollegeId.error && resWithCollegeId.error.message.includes('college_id')) {
+      // Fallback if college_id column does not exist yet in profiles table
+      const resFallback = await supabase
+        .from('profiles')
+        .select('id, name, college_name, year_of_study, semester, email, avatar_url, created_at, updated_at')
+        .eq('id', userId)
+        .maybeSingle();
+      data = resFallback.data;
+      error = resFallback.error;
+    } else {
+      data = resWithCollegeId.data;
+      error = resWithCollegeId.error;
+    }
 
     if (error) {
       console.warn('Profile fetch warning:', error.message);
@@ -164,6 +182,7 @@ export async function updateProfile(
 
   if (updates.name !== undefined) payload.name = updates.name.trim();
   if (updates.college_name !== undefined) payload.college_name = updates.college_name.trim();
+  if (updates.college_id !== undefined) payload.college_id = updates.college_id;
   if (updates.year_of_study !== undefined) payload.year_of_study = updates.year_of_study;
   if (updates.semester !== undefined) payload.semester = updates.semester;
 
@@ -172,15 +191,36 @@ export async function updateProfile(
     payload.avatar_url = extractStoragePath(updates.avatar_url);
   }
 
-  const { data, error } = await supabase
+  let data: any = null;
+  let updateError: any = null;
+
+  // Try updating with college_id
+  const resWithCollegeId = await supabase
     .from('profiles')
     .update(payload)
     .eq('id', user.id)
-    .select('id, name, college_name, year_of_study, semester, email, avatar_url, created_at, updated_at')
+    .select('id, name, college_name, college_id, year_of_study, semester, email, avatar_url, created_at, updated_at')
     .single();
 
-  if (error) {
-    throw new Error(`Failed to update profile: ${error.message}`);
+  if (resWithCollegeId.error && resWithCollegeId.error.message.includes('college_id')) {
+    // If college_id column is not yet migrated in Supabase, strip it and update college_name
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.college_id;
+    const resFallback = await supabase
+      .from('profiles')
+      .update(fallbackPayload)
+      .eq('id', user.id)
+      .select('id, name, college_name, year_of_study, semester, email, avatar_url, created_at, updated_at')
+      .single();
+    data = resFallback.data;
+    updateError = resFallback.error;
+  } else {
+    data = resWithCollegeId.data;
+    updateError = resWithCollegeId.error;
+  }
+
+  if (updateError) {
+    throw new Error(`Failed to update profile: ${updateError.message}`);
   }
 
   const updatedProfile = data as Profile;
